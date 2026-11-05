@@ -10,6 +10,8 @@ resource "aws_security_group" "this" {
   }
 }
 
+# The SSM agent needs 443 to Systems Manager through NAT.
+#trivy:ignore:AVD-AWS-0104
 resource "aws_vpc_security_group_egress_rule" "https" {
   security_group_id = aws_security_group.this.id
   description       = "HTTPS to Systems Manager through NAT"
