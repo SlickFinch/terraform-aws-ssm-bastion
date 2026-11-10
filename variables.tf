@@ -47,9 +47,20 @@ variable "desired_capacity" {
 }
 
 variable "egress_cidr_blocks" {
-  description = "Extra IPv4 CIDRs the bastion may reach on any port, for example private cluster VPCs. Port 443 to the internet is always open for SSM."
+  description = "Extra IPv4 CIDRs the bastion may reach, for example private VPCs. egress_tcp_ports limits the ports. Port 443 to the internet is always open for SSM."
   type        = list(string)
   default     = []
+}
+
+variable "egress_tcp_ports" {
+  description = "TCP ports the bastion may use toward egress_cidr_blocks. Null allows every protocol and port."
+  type        = list(number)
+  default     = null
+
+  validation {
+    condition     = var.egress_tcp_ports == null || alltrue([for p in coalesce(var.egress_tcp_ports, []) : p >= 1 && p <= 65535 && floor(p) == p])
+    error_message = "Each egress_tcp_ports entry must be a whole number from 1 to 65535."
+  }
 }
 
 variable "tags" {

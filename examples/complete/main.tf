@@ -24,6 +24,7 @@ module "bastion" {
   vpc_id             = module.vpc.vpc_id
   subnet_ids         = module.vpc.private_subnets
   egress_cidr_blocks = ["10.30.0.0/16"]
+  egress_tcp_ports   = [443, 5432]
 }
 
 output "start_session_command" {

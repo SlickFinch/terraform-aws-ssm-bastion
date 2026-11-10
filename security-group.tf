@@ -23,13 +23,23 @@ resource "aws_vpc_security_group_egress_rule" "https" {
   tags = var.tags
 }
 
+locals {
+  extra_egress_rules = var.egress_tcp_ports == null ? {
+    for cidr in var.egress_cidr_blocks : cidr => { cidr = cidr, protocol = "-1", port = null }
+    } : {
+    for pair in setproduct(var.egress_cidr_blocks, var.egress_tcp_ports) : "${pair[0]}/${pair[1]}" => { cidr = pair[0], protocol = "tcp", port = pair[1] }
+  }
+}
+
 resource "aws_vpc_security_group_egress_rule" "extra" {
-  for_each = toset(var.egress_cidr_blocks)
+  for_each = local.extra_egress_rules
 
   security_group_id = aws_security_group.this.id
-  description       = "Bastion egress to ${each.value}"
-  cidr_ipv4         = each.value
-  ip_protocol       = "-1"
+  description       = each.value.port == null ? "Bastion egress to ${each.value.cidr}" : "Bastion egress to ${each.value.cidr} on ${each.value.port}"
+  cidr_ipv4         = each.value.cidr
+  ip_protocol       = each.value.protocol
+  from_port         = each.value.port
+  to_port           = each.value.port
 
   tags = var.tags
 }

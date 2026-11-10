@@ -8,12 +8,13 @@ Pin the module to a release tag:
 
 ```hcl
 module "bastion" {
-  source = "git::https://github.com/SlickFinch/terraform-aws-ssm-bastion.git?ref=v1.0.0"
+  source = "git::https://github.com/SlickFinch/terraform-aws-ssm-bastion.git?ref=v1.1.0"
 
   name               = "acme-bastion"
   vpc_id             = module.vpc.vpc_id
   subnet_ids         = module.vpc.private_subnets
   egress_cidr_blocks = ["10.30.0.0/16"]
+  egress_tcp_ports   = [443, 5432]
 }
 ```
 
@@ -48,7 +49,7 @@ The cluster security group must allow 443 from the bastion's subnets or security
 ## How it behaves
 
 - **Closed by default.** No public IP, no key pair, no ingress rules. IMDSv2 is required.
-- **Egress.** Port 443 to `0.0.0.0/0` is always open, so the agent reaches Systems Manager through NAT. Each `egress_cidr_blocks` entry gets its own rule for any port.
+- **Egress.** Port 443 to `0.0.0.0/0` is always open, so the agent reaches Systems Manager through NAT. Each `egress_cidr_blocks` entry gets its own rule for any port. Set `egress_tcp_ports` to allow only those TCP ports, with one rule per pair of CIDR and port.
 - **Cost.** Set `desired_capacity = 0` to stop the instance when nobody needs it. The group never grows past 1.
 - **Updates.** A new AMI in `ami_ssm_parameter` changes the launch template at the next apply, and an instance refresh replaces the instance.
 - **Architecture.** The default is Graviton (`t4g.nano`, arm64 AMI). If you change `instance_type` to x86, change `ami_ssm_parameter` too.
@@ -111,7 +112,8 @@ Releases follow [semantic versioning](https://semver.org). Each release is a `vM
 | <a name="input_vpc_id"></a> [vpc\_id](#input\_vpc\_id) | VPC the bastion runs in. | `string` | n/a | yes |
 | <a name="input_ami_ssm_parameter"></a> [ami\_ssm\_parameter](#input\_ami\_ssm\_parameter) | SSM public parameter that holds the AMI ID. | `string` | `"/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64"` | no |
 | <a name="input_desired_capacity"></a> [desired\_capacity](#input\_desired\_capacity) | Number of bastion instances: 1 when in use, 0 to stop paying for it. | `number` | `1` | no |
-| <a name="input_egress_cidr_blocks"></a> [egress\_cidr\_blocks](#input\_egress\_cidr\_blocks) | Extra IPv4 CIDRs the bastion may reach on any port, for example private cluster VPCs. Port 443 to the internet is always open for SSM. | `list(string)` | `[]` | no |
+| <a name="input_egress_cidr_blocks"></a> [egress\_cidr\_blocks](#input\_egress\_cidr\_blocks) | Extra IPv4 CIDRs the bastion may reach, for example private VPCs. egress\_tcp\_ports limits the ports. Port 443 to the internet is always open for SSM. | `list(string)` | `[]` | no |
+| <a name="input_egress_tcp_ports"></a> [egress\_tcp\_ports](#input\_egress\_tcp\_ports) | TCP ports the bastion may use toward egress\_cidr\_blocks. Null allows every protocol and port. | `list(number)` | `null` | no |
 | <a name="input_instance_type"></a> [instance\_type](#input\_instance\_type) | EC2 instance type. It must match the AMI architecture. | `string` | `"t4g.nano"` | no |
 | <a name="input_tags"></a> [tags](#input\_tags) | Tags for every taggable resource. | `map(string)` | `{}` | no |
 

@@ -117,3 +117,41 @@ run "start_session_command" {
     error_message = "start_session_command must show the port-forwarding command."
   }
 }
+
+run "egress_ports_default_all_protocols" {
+  variables {
+    egress_cidr_blocks = ["10.30.0.0/16", "10.40.0.0/16"]
+  }
+  assert {
+    condition     = length(aws_vpc_security_group_egress_rule.extra) == 2 && alltrue([for r in aws_vpc_security_group_egress_rule.extra : r.ip_protocol == "-1"])
+    error_message = "With egress_tcp_ports null, each CIDR must get one all-protocol rule."
+  }
+}
+
+run "egress_ports_tcp_only" {
+  variables {
+    egress_cidr_blocks = ["10.30.0.0/16"]
+    egress_tcp_ports   = [80, 443, 5432, 6379]
+  }
+  assert {
+    condition     = length(aws_vpc_security_group_egress_rule.extra) == 4
+    error_message = "Each pair of CIDR and port must get its own rule."
+  }
+  assert {
+    condition     = alltrue([for r in aws_vpc_security_group_egress_rule.extra : r.ip_protocol == "tcp" && r.from_port == r.to_port && r.cidr_ipv4 == "10.30.0.0/16"])
+    error_message = "Port rules must be TCP, one port each, to the given CIDR."
+  }
+  assert {
+    condition     = toset([for r in aws_vpc_security_group_egress_rule.extra : r.from_port]) == toset([80, 443, 5432, 6379])
+    error_message = "Every port in egress_tcp_ports must get a rule."
+  }
+}
+
+run "egress_ports_invalid" {
+  command = plan
+  variables {
+    egress_cidr_blocks = ["10.30.0.0/16"]
+    egress_tcp_ports   = [0]
+  }
+  expect_failures = [var.egress_tcp_ports]
+}
